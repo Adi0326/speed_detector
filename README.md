@@ -1,25 +1,3 @@
-# Speed Detector - Local IoT Web Application
-
-A full-stack web application to capture and display real-time speed data from Arduino via USB serial connection.
-
-## Project Structure
-
-```
-speed-detector/
-├── backend/                 # Node.js backend
-│   ├── server.js           # Express server & WebSocket
-│   ├── database.js         # SQLite database setup
-│   ├── serialHandler.js    # Arduino serial data reader
-│   ├── package.json        # Dependencies
-│   └── speed_detector.db   # SQLite database (auto-created)
-├── frontend/               # Web interface
-│   ├── index.html          # HTML structure
-│   ├── styles.css          # Styling
-│   └── app.js              # Frontend logic
-├── arduino/                # Arduino code
-│   └── speed_detector.ino  # Arduino sketch
-└── README.md              # This file
-```
 
 ## Setup Instructions
 
