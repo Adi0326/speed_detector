@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speed Detector - Advanced Monitor</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+</head>
+<body>
+  <!-- Login Page -->
+  <div id="loginPage" class="login-page">
+    <div class="login-container">
+      <div class="login-box">
+        <div class="login-logo">⚡</div>
+        <h1>SPEED DETECTOR</h1>
+        <p>Admin Access</p>
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" placeholder="Enter username" required>
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Enter password" required>
+          </div>
+          <button type="submit" class="login-btn">Login</button>
+          <div id="loginError" class="error-message" style="display: none;"></div>
+        </form>
+        <p class="login-hint">Default: admin / admin123</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboardPage" class="container" style="display: none;">
+    <header>
+      <div class="header-content">
+        <div class="logo-section">
+          <div class="logo">⚡</div>
+          <h1>SPEED DETECTOR</h1>
+        </div>
+        <nav class="nav-tabs">
+          <button class="nav-btn active" data-page="dashboard">Dashboard</button>
+          <button class="nav-btn" data-page="statistics">Statistics</button>
+        </nav>
+        <div class="header-controls">
+          <span class="dev-badge">👨‍💻 B R Adithya</span>
+          <span class="status-badge" id="statusBadge">Connecting...</span>
+          <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- Dashboard Page -->
+      <div id="dashboard" class="page active">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-content">
+              <div class="stat-label">Total Records</div>
+              <div class="stat-value" id="totalRecords">0</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🏃</div>
+            <div class="stat-content">
+              <div class="stat-label">Current Speed</div>
+              <div class="stat-value" id="currentSpeed">-- km/h</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📈</div>
+            <div class="stat-content">
+              <div class="stat-label">Avg Speed</div>
+              <div class="stat-value" id="avgSpeed">-- km/h</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🚀</div>
+            <div class="stat-content">
+              <div class="stat-label">Max Speed</div>
+              <div class="stat-value" id="maxSpeed">-- km/h</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="live-records-section">
+          <div class="section-header">
+            <h2>Live Records</h2>
+            <div class="action-buttons">
+              <button id="exportBtn" class="action-btn export-btn">📊 Export Excel</button>
+              <button id="deleteBtn" class="action-btn delete-btn" style="display: none;">🗑️ Delete Selected</button>
+              <button id="refreshBtn" class="action-btn refresh-btn">🔄 Clear Data</button>
+            </div>
+          </div>
+          <div class="selection-info" id="selectionInfo" style="display: none;">
+            <span id="selectedCount">0</span> record(s) selected
+          </div>
+          <div class="table-wrapper">
+            <table id="recordsTable">
+              <thead>
+                <tr>
+                  <th style="width: 40px;"><input type="checkbox" id="selectAll" title="Select all"></th>
+                  <th>Session</th>
+                  <th>Object No</th>
+                  <th>Speed (km/h)</th>
+                  <th>Date</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody">
+                <tr class="empty-row">
+                  <td colspan="5">No data yet. Waiting for Arduino data...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Statistics Page -->
+      <div id="statistics" class="page">
+        <div class="stats-overview">
+          <div class="overview-card">
+            <div class="overview-label">Total Records</div>
+            <div class="overview-value" id="statsTotal">0</div>
+          </div>
+          <div class="overview-card">
+            <div class="overview-label">Average Speed</div>
+            <div class="overview-value" id="statsAvg">-- km/h</div>
+          </div>
+          <div class="overview-card">
+            <div class="overview-label">Max Speed</div>
+            <div class="overview-value" id="statsMax">-- km/h</div>
+          </div>
+          <div class="overview-card">
+            <div class="overview-label">Min Speed</div>
+            <div class="overview-value" id="statsMin">-- km/h</div>
+          </div>
+        </div>
+
+        <div class="charts-container">
+          <div class="chart-box">
+            <h3>Speed Distribution</h3>
+            <canvas id="speedChart"></canvas>
+          </div>
+          <div class="chart-box">
+            <h3>Session Performance</h3>
+            <canvas id="sessionChart"></canvas>
+          </div>
+        </div>
+
+        <div class="sessions-table-section">
+          <h3>Session Summary</h3>
+          <table id="sessionsTable">
+            <thead>
+              <tr>
+                <th>Session ID</th>
+                <th>Records</th>
+                <th>Avg Speed</th>
+                <th>Max Speed</th>
+              </tr>
+            </thead>
+            <tbody id="sessionsBody">
+              <tr class="empty-row">
+                <td colspan="4">No session data available</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>⚡ Speed Detector v2.0 | Real-time Monitoring System | Last update: <span id="lastUpdate">--:--:--</span></p>
+      <p style="margin-top: 10px; font-size: 0.9rem; color: #00d9ff;">Developed by <strong>B R Adithya</strong></p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

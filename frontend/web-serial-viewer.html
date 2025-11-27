@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Speed Detector - Web Serial Viewer</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #f3f4f6;
+      color: #1f2937;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+      color: white;
+      padding: 30px 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    header h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 10px 16px;
+      border-radius: 6px;
+      border: 1px solid #d0d6df;
+      background: white;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+
+    button.primary {
+      background: #2563eb;
+      color: white;
+      border-color: #2563eb;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    button:not(:disabled):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .card h2 {
+      font-size: 18px;
+      margin-bottom: 15px;
+      color: #111;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .stat-label {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .stat-value {
+      font-weight: 600;
+      color: #2563eb;
+      font-size: 16px;
+    }
+
+    #log {
+      height: 300px;
+      overflow-y: auto;
+      background: #08121a;
+      color: #e6f7ff;
+      padding: 12px;
+      border-radius: 6px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .log-entry {
+      margin-bottom: 4px;
+    }
+
+    .log-success {
+      color: #10b981;
+    }
+
+    .log-error {
+      color: #ef4444;
+    }
+
+    .log-info {
+      color: #3b82f6;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    thead {
+      background: #f3f4f6;
+    }
+
+    th {
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 2px solid #e5e7eb;
+      font-size: 14px;
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    tbody tr:hover {
+      background: #f9fafb;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 250px;
+      margin-top: 15px;
+    }
+
+    @media (max-width: 768px) {
+      .panel {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
+
+      #log {
+        height: 200px;
+      }
+
+      header h1 {
+        font-size: 20px;
+      }
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 8px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-right: 10px;
+    }
+
+    .status-connected {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-disconnected {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🚗 Speed Detector - Web Serial Viewer</h1>
+      <p>Real-time visualization of Arduino speed sensor data</p>
+    </header>
+
+    <div class="controls">
+      <button id="connectBtn" class="primary">🔌 Connect Backend</button>
+      <button id="disconnectBtn" disabled>❌ Disconnect</button>
+      <button id="clearLogBtn">🗑️ Clear Log</button>
+      <button id="downloadCsvBtn">⬇️ Download CSV</button>
+      <label style="display: flex; align-items: center; gap: 8px;">
+        <input type="checkbox" id="autoscroll" checked />
+        Auto-scroll log
+      </label>
+    </div>
+
+    <div class="panel">
+      <div class="card">
+        <h2>Live Statistics</h2>
+        <div class="stat-row">
+          <span class="stat-label">Status</span>
+          <span id="statusBadge" class="status-badge status-disconnected">Disconnected</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Last Speed</span>
+          <span class="stat-value" id="lastSpeed">—</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Average Speed</span>
+          <span class="stat-value" id="avgSpeed">—</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Max Speed</span>
+          <span class="stat-value" id="maxSpeed">—</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Min Speed</span>
+          <span class="stat-value" id="minSpeed">—</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Records</span>
+          <span class="stat-value" id="recordCount">0</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chart"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Serial Log</h2>
+        <div id="log"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Speed Records</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Session</th>
+            <th>Object</th>
+            <th>Speed (km/h)</th>
+            <th>Time (s)</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody id="recordsTable">
+          <tr>
+            <td colspan="6" style="text-align: center; color: #999;">No data yet. Connect to Arduino.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const connectBtn = document.getElementById('connectBtn');
+      const disconnectBtn = document.getElementById('disconnectBtn');
+      const clearLogBtn = document.getElementById('clearLogBtn');
+      const downloadCsvBtn = document.getElementById('downloadCsvBtn');
+      const logEl = document.getElementById('log');
+      const lastSpeedEl = document.getElementById('lastSpeed');
+      const avgSpeedEl = document.getElementById('avgSpeed');
+      const maxSpeedEl = document.getElementById('maxSpeed');
+      const minSpeedEl = document.getElementById('minSpeed');
+      const recordCountEl = document.getElementById('recordCount');
+      const statusBadge = document.getElementById('statusBadge');
+      const recordsTableEl = document.getElementById('recordsTable');
+      const autoscroll = document.getElementById('autoscroll');
+
+      let ws = null;
+      const MAX_RECORDS = 100;
+      const WS_URL = `ws://${window.location.hostname}:${window.location.port || 3000}`;
+
+      const records = [];
+      const chartData = {
+        times: [],
+        speeds: []
+      };
+
+      // Chart.js setup
+      const ctx = document.getElementById('chart').getContext('2d');
+      const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Speed (km/h)',
+            data: [],
+            borderColor: '#2563eb',
+            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+            tension: 0.3,
+            fill: true,
+            pointRadius: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          scales: {
+            x: { display: false },
+            y: { ticks: { callback: v => v + ' km/h' } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      function appendLog(text, type = 'info') {
+        const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false });
+        const entry = document.createElement('div');
+        entry.className = `log-entry log-${type}`;
+        entry.textContent = `[${timestamp}] ${text}`;
+        logEl.appendChild(entry);
+
+        if (autoscroll.checked) {
+          logEl.scrollTop = logEl.scrollHeight;
+        }
+      }
+
+      function parseSerialData(line) {
+        line = line.trim();
+        if (!line) return null;
+
+        // Parse CSV format: CSV:sessionId,objectNo,speed_km_h
+        if (line.startsWith('CSV:')) {
+          const csvData = line.substring(4);
+          const parts = csvData.split(',');
+          if (parts.length === 3) {
+            return {
+              sessionId: parseInt(parts[0]),
+              objectNo: parseInt(parts[1]),
+              speed_km_h: parseFloat(parts[2]),
+              type: 'csv'
+            };
+          }
+        }
+
+        // Parse text format: Time = X s | Speed: X km/s
+        if (line.includes('Speed:') && line.includes('Time =')) {
+          const speedMatch = line.match(/Speed:\s*([0-9.\-eE]+)/);
+          const timeMatch = line.match(/Time\s*=\s*([0-9.\-eE]+)/);
+          if (speedMatch) {
+            const speed_km_s = parseFloat(speedMatch[1]);
+            const time_s = timeMatch ? parseFloat(timeMatch[1]) : 0;
+            return {
+              time_s: time_s,
+              speed_km_h: speed_km_s * 3600.0,
+              type: 'text'
+            };
+          }
+        }
+
+        return null;
+      }
+
+      function addRecord(data) {
+        const now = new Date();
+        const record = {
+          index: records.length + 1,
+          ...data,
+          timestamp: now.toLocaleTimeString('en-GB', { hour12: false })
+        };
+
+        records.push(record);
+        if (records.length > MAX_RECORDS) {
+          records.shift();
+        }
+
+        chartData.speeds.push(data.speed_km_h);
+        chartData.times.push(record.index);
+        if (chartData.speeds.length > 50) {
+          chartData.speeds.shift();
+          chartData.times.shift();
+        }
+
+        updateChart();
+        updateStats();
+        updateTable();
+      }
+
+      function updateChart() {
+        chart.data.labels = chartData.times;
+        chart.data.datasets[0].data = chartData.speeds;
+        chart.update();
+      }
+
+      function updateStats() {
+        if (records.length === 0) {
+          lastSpeedEl.textContent = '—';
+          avgSpeedEl.textContent = '—';
+          maxSpeedEl.textContent = '—';
+          minSpeedEl.textContent = '—';
+          recordCountEl.textContent = '0';
+          return;
+        }
+
+        const speeds = records.map(r => r.speed_km_h);
+        lastSpeedEl.textContent = speeds[speeds.length - 1].toFixed(2) + ' km/h';
+        avgSpeedEl.textContent = (speeds.reduce((a, b) => a + b, 0) / speeds.length).toFixed(2) + ' km/h';
+        maxSpeedEl.textContent = Math.max(...speeds).toFixed(2) + ' km/h';
+        minSpeedEl.textContent = Math.min(...speeds).toFixed(2) + ' km/h';
+        recordCountEl.textContent = records.length;
+      }
+
+      function updateTable() {
+        if (records.length === 0) {
+          recordsTableEl.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">No records yet</td></tr>';
+          return;
+        }
+
+        recordsTableEl.innerHTML = records
+          .slice(-20)
+          .reverse()
+          .map(r => `
+          <tr>
+            <td>${r.index}</td>
+            <td>${r.sessionId || '-'}</td>
+            <td>${r.objectNo || '-'}</td>
+            <td>${r.speed_km_h.toFixed(2)}</td>
+            <td>${(r.time_s || 0).toFixed(6)}</td>
+            <td>${r.timestamp}</td>
+          </tr>
+        `)
+          .join('');
+      }
+
+      function connectWebSocket() {
+        try {
+          ws = new WebSocket(WS_URL);
+
+          ws.addEventListener('open', () => {
+            connectBtn.disabled = true;
+            disconnectBtn.disabled = false;
+            statusBadge.className = 'status-badge status-connected';
+            statusBadge.textContent = '🟢 Connected';
+            appendLog('Connected to backend', 'success');
+          });
+
+          ws.addEventListener('message', (event) => {
+            try {
+              const message = JSON.parse(event.data);
+              if (message.type === 'newRecord' && message.data) {
+                addRecord(message.data);
+                appendLog(`✓ Speed: ${message.data.speed_km_h.toFixed(2)} km/h`, 'success');
+              }
+            } catch (err) {
+              appendLog(`Message parse error: ${err}`, 'error');
+            }
+          });
+
+          ws.addEventListener('close', () => {
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+            statusBadge.className = 'status-badge status-disconnected';
+            statusBadge.textContent = '🔴 Disconnected';
+            appendLog('Disconnected from backend', 'info');
+            ws = null;
+          });
+
+          ws.addEventListener('error', (error) => {
+            appendLog(`WebSocket error: ${error.message || 'Unknown error'}`, 'error');
+          });
+        } catch (err) {
+          appendLog(`Connection failed: ${err}`, 'error');
+        }
+      }
+
+      connectBtn.addEventListener('click', () => {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          connectWebSocket();
+        }
+      });
+
+      disconnectBtn.addEventListener('click', () => {
+        if (ws) {
+          ws.close();
+        }
+      });
+
+      clearLogBtn.addEventListener('click', () => {
+        logEl.innerHTML = '';
+      });
+
+      downloadCsvBtn.addEventListener('click', () => {
+        if (records.length === 0) {
+          alert('No records to download');
+          return;
+        }
+
+        let csv = 'Index,Session,Object,Speed (km/h),Time (s),Timestamp\n';
+        records.forEach(r => {
+          csv += `${r.index},${r.sessionId || '-'},${r.objectNo || '-'},${r.speed_km_h.toFixed(2)},${(r.time_s || 0).toFixed(6)},${r.timestamp}\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `speed_data_${new Date().getTime()}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        appendLog(`Downloaded ${records.length} records`, 'success');
+      });
+
+      appendLog('Ready. Click "Connect Backend" to begin.', 'info');
+      appendLog(`Backend URL: ${WS_URL}`, 'info');
+    })();
+  </script>
+</body>
+</html>
